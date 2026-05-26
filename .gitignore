@@ -1,0 +1,35 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Generated data (large, user-specific)
+outputs/
+chroma_db/
+trip_history.db
+eval_reports/
+
+# Server / run logs
+server.log
+server_err.log
+api_log.txt
+server_stderr.txt
+server_stdout.txt
+streamlit_log.txt
+streamlit_out.txt
+
+# DeepEval local config
+.deepeval/
+
+# IDE
+.vscode/
+.idea/
+*.swp
