@@ -1,8 +1,9 @@
+import os
 import time
 import requests
 import streamlit as st
 
-API_BASE = "http://localhost:8000"
+API_BASE = os.environ.get("API_BASE_URL", "http://localhost:8000").rstrip("/")
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -343,7 +344,7 @@ elif "session_id" not in st.session_state:
     </div>
     """, unsafe_allow_html=True)
 
-    st.info("⚙️ Make sure the backend API server is running: `python -m uvicorn api.main:app --reload --port 8000`")
+    st.info(f"⚙️ Connected to API: `{API_BASE}`")
 
     with st.expander("How it works"):
         st.markdown("""
