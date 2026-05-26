@@ -7,6 +7,7 @@ langsmith>=0.1.0
 chromadb>=0.5.0
 fastapi>=0.110.0
 uvicorn[standard]
+streamlit>=1.35.0
 sqlalchemy>=2.0.0
 aiosqlite
 pydantic-settings>=2.0.0
