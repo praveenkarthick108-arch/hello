@@ -349,6 +349,12 @@ async def get_user_trip_history(
     return UserTripsResponse(user_id=user_id, trips=trips, total=len(trips))
 
 
+@app.get("/", include_in_schema=False)
+async def root():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/docs")
+
+
 @app.get("/health")
 async def health():
     """Health check endpoint."""
