@@ -24,11 +24,68 @@ from src.memory.sqlite_manager import (
 )
 
 
+# ── MLflow setup ─────────────────────────────────────────────────────────────
+
+def _setup_mlflow() -> None:
+    if not settings.mlflow_enabled:
+        return
+    try:
+        import mlflow
+        mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
+        mlflow.set_experiment(settings.mlflow_experiment)
+        mlflow.openai.autolog()
+        logger.info(f"[MLflow] Tracking → {settings.mlflow_tracking_uri}  experiment={settings.mlflow_experiment}")
+    except Exception as exc:
+        logger.warning(f"[MLflow] Setup failed (non-fatal): {exc}")
+
+
+def _log_trip_to_mlflow(session_id: str, prefs: dict, eval_report: dict | None) -> None:
+    if not settings.mlflow_enabled:
+        return
+    try:
+        import mlflow
+        with mlflow.start_run(run_name=session_id):
+            # Params — what was planned
+            p = prefs or {}
+            mlflow.log_params({
+                "session_id":  session_id,
+                "destination": p.get("destination", ""),
+                "origin":      p.get("origin", ""),
+                "start_date":  p.get("start_date", ""),
+                "end_date":    p.get("end_date", ""),
+                "budget_usd":  p.get("budget_usd", 0),
+                "travelers":   p.get("travelers", 1),
+                "trip_type":   p.get("trip_type", ""),
+                "model":       settings.openai_model,
+            })
+
+            # Metrics — eval scores
+            if eval_report:
+                summary = eval_report.get("summary", {})
+                if summary.get("overall_avg_score") is not None:
+                    mlflow.log_metric("overall_avg_score", summary["overall_avg_score"])
+                if summary.get("overall_pass_rate") is not None:
+                    mlflow.log_metric("overall_pass_rate", summary["overall_pass_rate"])
+
+                basic = eval_report.get("suites", {}).get("basic", {})
+                for r in basic.get("results", []):
+                    mlflow.log_metric(f"eval_{r['name']}", r["score"])
+
+            # Artifact — full eval report JSON
+            eval_path = Path(f"./eval_reports/eval_{session_id}.json")
+            if eval_path.exists():
+                mlflow.log_artifact(str(eval_path), artifact_path="eval_reports")
+
+    except Exception as exc:
+        logger.warning(f"[MLflow] Logging failed (non-fatal): {exc}")
+
+
 # ── Lifespan ─────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    _setup_mlflow()
     yield
 
 
@@ -210,6 +267,13 @@ async def run_trip_graph(session_id: str, user_id: str, raw_input: str) -> None:
             # asyncio.run() inside here creates its own fresh loop + task,
             # which is what asyncio.timeout() (used by DeepEval) requires.
             _save_eval_report(session_id, final_state)
+            # After evals are written, log everything to MLflow
+            eval_path = Path(f"./eval_reports/eval_{session_id}.json")
+            eval_report = None
+            if eval_path.exists():
+                with open(eval_path, "r", encoding="utf-8") as f:
+                    eval_report = json.load(f)
+            _log_trip_to_mlflow(session_id, trip_prefs, eval_report)
 
         t = threading.Thread(target=_run_in_own_loop, daemon=True)
         t.start()

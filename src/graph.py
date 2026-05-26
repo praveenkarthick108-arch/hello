@@ -59,25 +59,25 @@ def orchestrator_router(state: TripPlannerState) -> str | list[Send]:
         return pending
 
     # ── Phase 4: Conflict-driven retries (evaluated after research completes) ──
-    prefs = state["trip_preferences"]
+    prefs = state.get("trip_preferences") or {}
     total_budget = float(prefs.get("budget_usd", 0))
 
     # Rule: hotel estimate too high → retry hotel agent
-    hotel = state.get("hotel_data", {})
+    hotel = state.get("hotel_data") or {}
     hotel_cost = float(hotel.get("estimated_cost_usd", 0))
     if hotel_cost > total_budget * 0.60 and not hotel.get("within_budget"):
         if retries.get("hotel_agent", 0) < MAX:
             return "hotel_agent"
 
     # Rule: transport unavailable → retry transport agent
-    transport = state.get("transport_data", {})
+    transport = state.get("transport_data") or {}
     if not transport.get("availability", True):
         if retries.get("transport_agent", 0) < MAX:
             return "transport_agent"
 
     # Rule: severe weather + no indoor options → retry places agent
-    weather = state.get("weather_data", {})
-    places  = state.get("places_data", {})
+    weather = state.get("weather_data") or {}
+    places  = state.get("places_data") or {}
     if weather.get("severe_weather") and not places.get("indoor_options"):
         if retries.get("places_agent", 0) < MAX:
             return "places_agent"
@@ -91,12 +91,12 @@ def orchestrator_router(state: TripPlannerState) -> str | list[Send]:
         return "itinerary_agent"
 
     # Rule: itinerary has scheduling conflicts → retry itinerary agent
-    itinerary = state.get("itinerary", {})
+    itinerary = state.get("itinerary") or {}
     if itinerary.get("conflicts") and retries.get("itinerary_agent", 0) < MAX:
         return "itinerary_agent"
 
     # ── Phase 7: Final review ──
-    review = state.get("review_status", {})
+    review = state.get("review_status") or {}
 
     if not review:
         return "final_review_agent"
@@ -121,7 +121,7 @@ def orchestrator_router(state: TripPlannerState) -> str | list[Send]:
             return "final_review_agent"
 
     # ── Phase 8: PDF generation ──
-    if not state.get("pdf_status", {}).get("generated"):
+    if not (state.get("pdf_status") or {}).get("generated"):
         return "pdf_generator_agent"
 
     return END

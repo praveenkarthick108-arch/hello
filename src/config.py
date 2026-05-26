@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     langchain_project: str = "trip-planner"
     langsmith_tracing: bool = False
 
+    # MLflow
+    mlflow_tracking_uri: str = "http://localhost:5000"
+    mlflow_experiment: str = "trip-planner"
+    mlflow_enabled: bool = False
+
     # Storage
     chroma_persist_dir: str = "./chroma_db"
     chroma_collection_name: str = "user_preferences"
